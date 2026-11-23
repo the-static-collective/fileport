@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="description" content="STATIC FILEPORT — private files, thoughtful handoffs, project workbenches.">
+  <title>STATIC FILEPORT · Intranet</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="Static Fileport homepage">
+      <span class="brand-mark">F<span class="brand-point">·</span></span>
+      <span class="brand-type"><b>STATIC</b><span>FILEPORT / INTRANET</span></span>
+    </a>
+    <div class="mast-right"><span class="status-dot" id="service-indicator"></span><span id="service-state">Checking service</span><span class="mast-number">001 / THE GATE</span></div>
+  </header>
+
+  <main class="frame">
+    <section id="receiver" hidden aria-labelledby="receive-heading">
+      <div class="section-label"><span>PRIVATE DELIVERY</span><span>ONE GOOD LINK</span></div>
+      <div class="receiver-hero">
+        <div>
+          <p class="overline">A PACKAGE FOR YOU</p>
+          <h1 id="receive-heading">Your files have arrived.</h1>
+          <p class="lede">A private handoff from the Static Collective. Open, watch, or save only what was shared with you.</p>
+        </div>
+        <div class="seal" aria-hidden="true"><span>F</span><small>HAND TO HAND</small></div>
+      </div>
+      <div class="card receive-card">
+        <div class="card-top"><span>PACKAGE CONTENTS</span><span id="receive-expiry">Invitation access</span></div>
+        <h2 id="receive-title">Opening your invitation…</h2>
+        <p class="muted" id="receive-state" role="status" aria-live="polite">Checking the link.</p>
+        <div id="receive-files" class="receive-files"></div>
+      </div>
+      <p class="footer-note">This link can be forwarded by anyone who holds it. If it is no longer appropriate to share, ask the sender to revoke it.</p>
+    </section>
+
+    <section id="operator" aria-labelledby="intro-heading">
+      <div class="section-label"><span>A QUIET PLACE FOR HANDOFFS</span><span>THE STATIC COLLECTIVE</span></div>
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="overline"><span class="spark">✳</span> THE LIVING INTRANET / FILEPORT</p>
+          <h1 id="intro-heading">Make a file.<br>Give it a <em>home.</em><br>Let it go.</h1>
+          <p class="lede">Projects live here. Files stay private. Invitations have an ending. No cloud dashboard between the maker and the person receiving the work.</p>
+          <div class="hero-meta"><span>PRIVATE STORAGE</span><span>EXPIRING INVITATIONS</span><span>HONEST RECEIPTS</span></div>
+        </div>
+        <div class="orbit-art" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="orbit orbit-c"></div><div class="orbit-core">F<span>·</span></div><div class="orbit-caption">THE RETURN<br>IS A DOOR</div></div>
+      </section>
+
+      <section class="access-band" id="login-panel" aria-labelledby="login-title">
+        <div><p class="overline">OWNER ENTRANCE</p><h2 id="login-title">Step inside the workbench.</h2><p>Private operator access. Recipients never need to sign in.</p></div>
+        <form id="login-form" class="login-form">
+          <label class="sr-only" for="owner-key">Owner key</label>
+          <input id="owner-key" type="password" autocomplete="off" spellcheck="false" placeholder="Owner key" required minlength="32">
+          <button class="button primary" type="submit">Open workbench <span aria-hidden="true">↗</span></button>
+        </form>
+      </section>
+
+      <section id="desk" hidden aria-label="Owner workbench">
+        <div class="desk-header">
+          <div><p class="overline">YOUR WORKBENCH</p><h2>A little more room to make.</h2><p class="muted">Upload → approve → share. Everything else stays in the machinery.</p></div>
+          <button class="button quiet" id="sign-out" type="button">Lock workbench</button>
+        </div>
+        <div class="workspace-bar">
+          <div class="workspace-field">
+            <label for="workspace-picker">PROJECT / HOME</label>
+            <select id="workspace-picker" aria-label="Select project workspace"></select>
+          </div>
+          <form id="workspace-form" class="workspace-create">
+            <label class="sr-only" for="workspace-name">New workspace name</label>
+            <input id="workspace-name" placeholder="New project name" maxlength="120" autocomplete="off">
+            <button class="button outline" type="submit">+ New home</button>
+          </form>
+        </div>
+
+        <div class="workbench-grid">
+          <section class="card upload-card" aria-labelledby="upload-heading">
+            <div class="card-top"><span>01 / RECEIVE</span><span class="stamp">PRIVATE BY DEFAULT</span></div>
+            <h3 id="upload-heading">Bring a file home.</h3>
+            <p class="muted">Drop a file here or choose one. Nothing becomes shareable until you approve it.</p>
+            <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Choose a file to upload">
+              <div class="upload-icon" aria-hidden="true">↑</div>
+              <strong>Drop it here</strong><span>or click to browse</span><small>Up to 25 MB per file in this pilot</small>
+              <input type="file" id="file-input" hidden>
+            </div>
+            <div class="upload-progress" id="upload-progress" hidden><div id="upload-progress-bar"></div></div>
+            <p id="upload-status" role="status" aria-live="polite" class="muted"></p>
+          </section>
+
+          <section class="card handoff-card" aria-labelledby="handoff-heading">
+            <div class="card-top"><span>02 / SEND</span><span class="stamp">ENDINGS INCLUDED</span></div>
+            <h3 id="handoff-heading">Prepare a handoff.</h3>
+            <p class="muted">Select approved files below, choose how long the door stays open, and make one link.</p>
+            <form id="share-form" class="form-stack">
+              <label for="share-title">Package title</label>
+              <input id="share-title" name="title" maxlength="150" placeholder="A little something for Colton" required>
+              <label for="share-hours">Invite expires after</label>
+              <select id="share-hours" name="hours">
+                <option value="24">24 hours</option>
+                <option value="72">3 days</option>
+                <option value="168" selected>7 days</option>
+                <option value="720">30 days</option>
+              </select>
+              <div class="selected-count"><span id="selected-count">0 files selected</span><span>APPROVED ONLY</span></div>
+              <button type="submit" class="button primary block">Make private link <span aria-hidden="true">↗</span></button>
+            </form>
+            <div id="new-share" class="new-share" hidden>
+              <p class="overline">YOUR LINK IS READY</p>
+              <input id="share-url" readonly aria-label="Generated private invitation link">
+              <button id="copy-share" class="button outline block" type="button">Copy invitation link</button>
+              <small>Saved in this tab only. Use “Refresh link” in recent handoffs if you need a new one.</small>
+            </div>
+          </section>
+        </div>
+
+        <section class="card library-card" aria-labelledby="library-heading">
+          <div class="card-top"><span>03 / LIBRARY</span><span id="library-count" class="stamp">0 FILES</span></div>
+          <div class="section-heading"><div><h3 id="library-heading">The work on this table.</h3><p class="muted">Approve or disable individual files. Tick approved files to include them in a handoff.</p></div><button id="refresh-library" class="button quiet" type="button">Refresh</button></div>
+          <div id="files-list" class="file-list"><p class="empty-state">No files here yet.</p></div>
+        </section>
+
+        <div class="bottom-grid">
+          <section class="card history-card" aria-labelledby="history-heading">
+            <div class="card-top"><span>04 / INVITATIONS</span><span class="stamp">REVOCABLE</span></div>
+            <h3 id="history-heading">Recent handoffs.</h3>
+            <p class="muted">A lost invitation can be refreshed. Refreshing invalidates the old link.</p>
+            <div id="share-list" class="share-list"><p class="empty-state">No handoffs yet.</p></div>
+          </section>
+          <section class="card activity-card" aria-labelledby="activity-heading">
+            <div class="card-top"><span>05 / RECEIPTS</span><span class="stamp">NO TRACKING PIXELS</span></div>
+            <h3 id="activity-heading">The ledger.</h3>
+            <p class="muted">Minimal event history; no recipient identities or IP addresses stored.</p>
+            <div id="activity-list" class="activity-list"><p class="empty-state">Nothing recorded yet.</p></div>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+  <footer class="site-footer"><span>STATIC FILEPORT <span class="middot">·</span> FIRST THE HUMAN, THEN THE MACHINE</span><span>MADE FOR REAL HANDOFFS</span></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
