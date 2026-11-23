@@ -5,9 +5,13 @@ import {
   cookieToken, shareCookie, removeShareCookie, contentDisposition,
   safeInline, readObject, parseByteRange
 } from "../../lib/core.js";
+import {
+  storageConfigured, writeProvider, providerForFile,
+  storageProbe, storagePut, storageGet, storageDelete
+} from "../../lib/storage.js";
 
 function configured(env) {
-  return Boolean(env.DATABASE_URL && env.FILEPORT_BUCKET);
+  return Boolean(env.DATABASE_URL && storageConfigured(env));
 }
 function db(env) {
   return neon(env.DATABASE_URL);
@@ -57,7 +61,7 @@ async function handleShareFile(request, env, sql, fileId) {
   const share = await authorizedShare(sql, cookieToken(request));
   if (!share) return error("Invitation expired or revoked", 404);
   const files = await sql.query(
-    "SELECT f.id,f.storage_key,f.display_name,f.mime_type,f.bytes FROM public.fileport_files f JOIN public.fileport_share_files sf ON sf.file_id=f.id WHERE sf.share_id=$1 AND f.id=$2 AND f.state='approved' LIMIT 1",
+    "SELECT f.id,f.storage_provider,f.storage_key,f.display_name,f.mime_type,f.bytes FROM public.fileport_files f JOIN public.fileport_share_files sf ON sf.file_id=f.id WHERE sf.share_id=$1 AND f.id=$2 AND f.state='approved' LIMIT 1",
     [share.id, fileId]
   );
   const file = files[0];
@@ -71,9 +75,9 @@ async function handleShareFile(request, env, sql, fileId) {
   }
   let object;
   try {
-    object = await env.FILEPORT_BUCKET.get(file.storage_key,
-      range ? { range: { offset: range.offset, length: range.length } } : undefined);
-  } catch {
+    object = await storageGet(env, providerForFile(file), file.storage_key, range, Number(file.bytes));
+  } catch (err) {
+    console.error("Private file delivery failed:", err?.name || "Error");
     return error("Unable to read file", 503);
   }
   if (!object) return error("File unavailable", 404);
@@ -89,7 +93,7 @@ async function handleShareFile(request, env, sql, fileId) {
     "Content-Disposition": contentDisposition(file.display_name, download),
     "Accept-Ranges": "bytes"
   });
-  if (object.httpEtag) h.set("ETag", object.httpEtag);
+  if (object.etag) h.set("ETag", object.etag);
   if (range) {
     h.set("Content-Range", "bytes " + range.start + "-" + range.end + "/" + range.total);
     h.set("Content-Length", String(range.length));
@@ -108,7 +112,11 @@ async function handleOwner(request, env, sql, pathname, url) {
 
   if (pathname === "/api/admin/status" && request.method === "GET") {
     await sql.query("SELECT 1");
-    return json({ ok: true, maxUploadBytes: MAX_UPLOAD_BYTES });
+    await storageProbe(env, "neon");
+    return json({
+      ok: true, maxUploadBytes: MAX_UPLOAD_BYTES, primaryProvider: "neon",
+      uploadProvider: writeProvider(env), r2Available: Boolean(env.FILEPORT_BUCKET)
+    });
   }
   if (pathname === "/api/admin/workspaces" && request.method === "GET") {
     return json({ workspaces: await sql.query("SELECT id,slug,name,description FROM public.fileport_workspaces ORDER BY name") });
@@ -127,7 +135,7 @@ async function handleOwner(request, env, sql, pathname, url) {
     const slug = url.searchParams.get("workspace");
     if (!validSlug(slug)) return error("Workspace required");
     const rows = await sql.query(
-      "SELECT f.id,f.display_name,f.mime_type,f.bytes,f.state,f.created_at FROM public.fileport_files f JOIN public.fileport_workspaces w ON w.id=f.workspace_id WHERE w.slug=$1 ORDER BY f.created_at DESC LIMIT 300",
+      "SELECT f.id,f.storage_provider,f.display_name,f.mime_type,f.bytes,f.state,f.created_at FROM public.fileport_files f JOIN public.fileport_workspaces w ON w.id=f.workspace_id WHERE w.slug=$1 ORDER BY f.created_at DESC LIMIT 300",
       [slug]
     );
     return json({ files: rows.map(x => ({ ...x, bytes: Number(x.bytes) })) });
@@ -149,21 +157,23 @@ async function handleOwner(request, env, sql, pathname, url) {
     const bytes = await request.arrayBuffer();
     if (bytes.byteLength === 0 || bytes.byteLength > MAX_UPLOAD_BYTES) return error("File must be between 1 byte and 25 MB", 413);
     const type = mimeType(request.headers.get("Content-Type"));
+    const provider = writeProvider(env); // Neon by default; R2 only when explicitly selected and bound.
     const key = "workspaces/" + slug + "/" + crypto.randomUUID() + "/" + name.replace(/[^a-zA-Z0-9._-]/g, "_");
     try {
-      await env.FILEPORT_BUCKET.put(key, bytes, { httpMetadata: { contentType: type } });
-    } catch {
+      await storagePut(env, provider, key, bytes, type);
+    } catch (err) {
+      console.error("Private file upload failed:", err?.name || "Error");
       return error("Private storage upload failed", 503);
     }
     try {
       const rows = await sql.query(
-        "INSERT INTO public.fileport_files(workspace_id,storage_key,display_name,mime_type,bytes) VALUES($1,$2,$3,$4,$5) RETURNING id,display_name,state,bytes",
-        [ws.id, key, name, type, bytes.byteLength]
+        "INSERT INTO public.fileport_files(workspace_id,storage_provider,storage_key,display_name,mime_type,bytes) VALUES($1,$2,$3,$4,$5,$6) RETURNING id,display_name,storage_provider,state,bytes",
+        [ws.id, provider, key, name, type, bytes.byteLength]
       );
       await logEvent(sql, "upload", ws.id, null, rows[0].id);
       return json({ file: { ...rows[0], bytes: Number(rows[0].bytes) } }, 201);
     } catch {
-      await env.FILEPORT_BUCKET.delete(key).catch(() => {});
+      await storageDelete(env, provider, key).catch(() => {});
       return error("Unable to register upload", 503);
     }
   }
@@ -258,7 +268,10 @@ export async function onRequest({ request, env }) {
     const sql = db(env);
     if (pathname === "/api/health" && request.method === "GET") {
       await sql.query("SELECT 1");
-      return json({ ok: true, storage: true, database: true });
+      return json({
+        ok: true, database: true, primaryProvider: "neon",
+        storage: "configured", storageVerified: false
+      });
     }
     if (pathname.startsWith("/api/admin/")) return await handleOwner(request, env, sql, pathname, url);
     if (pathname === "/api/share/open") return await handleShareOpen(request, env, sql);
