@@ -1,0 +1,8 @@
+name = "fileport"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-11-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Runtime secrets are configured in Cloudflare, never committed:
+# DATABASE_URL, FILEPORT_ADMIN_TOKEN, NEON_S3_ACCESS_KEY_ID, NEON_S3_SECRET_ACCESS_KEY.
+# Optional future: FILEPORT_BUCKET R2 binding, FILEPORT_WRITE_PROVIDER = "r2".
