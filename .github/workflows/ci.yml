@@ -12,9 +12,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: package-lock.json
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - run: npm run check
       - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers
       - name: Verify private server modules are never in static output

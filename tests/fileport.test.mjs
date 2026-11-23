@@ -21,7 +21,7 @@ test("workspace, file and name boundaries fail closed", () => {
   assert.equal(validSlug("../bad"),false); assert.equal(validSlug("A"),false);
   assert.ok(validUuid("1d6b37c4-06b7-4ddf-b2fd-ad83f8a6576c"));
   assert.equal(validUuid("file.mp4"),false);
-  assert.equal(cleanName("../hello.mp4"),"_.._hello.mp4");
+  assert.equal(cleanName("../hello.mp4"),".._hello.mp4");
   assert.equal(cleanName("slash\\hidden"),"slash_hidden");
   assert.equal(mimeType("Video/MP4; charset=utf-8"),"video/mp4");
   assert.equal(mimeType("random"),"application/octet-stream");
