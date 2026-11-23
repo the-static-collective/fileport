@@ -307,7 +307,7 @@ function bindEvents() {
     event.preventDefault();
     state.key = $("owner-key").value.trim();
     try { await openWorkbench(); toast("Workbench opened."); }
-    catch (e) { state.key = ""; sessionStorage.removeItem("fileport-owner-key"); toast(e.message,true); }
+    catch (e) { lockWorkbench(); toast(e.message,true); }
   });
   $("sign-out").addEventListener("click",lockWorkbench);
   $("workspace-picker").addEventListener("change", async event => {
@@ -328,7 +328,7 @@ function bindEvents() {
       await loadWorkspaces(); toast("Project home created.");
     } catch (e) { toast(e.message,true); }
   });
-  $("dropzone").addEventListener("click",() => $("file-input").click());
+  $("dropzone").addEventListener("click",event => { if (event.target !== $("file-input")) $("file-input").click(); });
   $("dropzone").addEventListener("keydown",e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); $("file-input").click(); } });
   $("file-input").addEventListener("change",e => upload(e.target.files?.[0]));
   for (const type of ["dragenter","dragover"]) $("dropzone").addEventListener(type,e => {e.preventDefault(); $("dropzone").classList.add("over");});
