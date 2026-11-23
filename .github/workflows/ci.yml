@@ -14,7 +14,7 @@ jobs:
           node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: npm run check
-      - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers
+      - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers && test -f dist/_routes.json
       - name: Verify private server modules are never in static output
         run: |
           test ! -e dist/lib

@@ -5,7 +5,7 @@ import {
   MAX_UPLOAD_BYTES, SHARE_COOKIE, validUuid, validToken, validSlug,
   cleanName, mimeType, generateToken, sha256, adminAuthorized,
   cookieToken, shareCookie, removeShareCookie, contentDisposition,
-  safeInline, readObject
+  safeInline, readObject, parseByteRange
 } from "../lib/core.js";
 import { onRequest } from "../functions/api/[[path]].js";
 
@@ -76,4 +76,15 @@ test("browser assets have no storage credentials or signed S3 URLs", async () =>
   assert.match(source,/FILEPORT_BUCKET\.get/);
   assert.match(source,/revoked_at IS NULL AND expires_at > now\(\)/);
   assert.match(source,/f\.state='approved'/);
+});
+
+test("byte-range parsing supports video seeking and rejects unsafe ranges", () => {
+  assert.deepEqual(parseByteRange("bytes=0-", 1000),{offset:0,length:1000,start:0,end:999,total:1000});
+  assert.deepEqual(parseByteRange("bytes=100-199", 1000),{offset:100,length:100,start:100,end:199,total:1000});
+  assert.deepEqual(parseByteRange("bytes=-20", 1000),{offset:980,length:20,start:980,end:999,total:1000});
+  assert.deepEqual(parseByteRange("bytes=990-2000", 1000),{offset:990,length:10,start:990,end:999,total:1000});
+  assert.equal(parseByteRange("bytes=1000-", 1000),false);
+  assert.equal(parseByteRange("bytes=10-1", 1000),false);
+  assert.equal(parseByteRange("bytes=0-1,5-6", 1000),false);
+  assert.equal(parseByteRange(null, 1000),null);
 });

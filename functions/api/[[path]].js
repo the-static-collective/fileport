@@ -3,7 +3,7 @@ import {
   MAX_UPLOAD_BYTES, json, validUuid, validSlug, validToken,
   cleanName, mimeType, generateToken, sha256, adminAuthorized,
   cookieToken, shareCookie, removeShareCookie, contentDisposition,
-  safeInline, readObject
+  safeInline, readObject, parseByteRange
 } from "../../lib/core.js";
 
 function configured(env) {
@@ -62,11 +62,17 @@ async function handleShareFile(request, env, sql, fileId) {
   );
   const file = files[0];
   if (!file) return error("File not found", 404);
-  const rangeRequested = request.headers.has("Range");
+  const range = parseByteRange(request.headers.get("Range"), Number(file.bytes));
+  if (range === false) {
+    return new Response(null, {
+      status: 416,
+      headers: { "Content-Range": "bytes */" + file.bytes, "Cache-Control": "no-store", "Accept-Ranges": "bytes" }
+    });
+  }
   let object;
   try {
     object = await env.FILEPORT_BUCKET.get(file.storage_key,
-      rangeRequested ? { range: request.headers } : undefined);
+      range ? { range: { offset: range.offset, length: range.length } } : undefined);
   } catch {
     return error("Unable to read file", 503);
   }
@@ -81,14 +87,12 @@ async function handleShareFile(request, env, sql, fileId) {
     "X-Robots-Tag": "noindex, nofollow, noarchive",
     "Cross-Origin-Resource-Policy": "same-origin",
     "Content-Disposition": contentDisposition(file.display_name, download),
-    "Accept-Ranges": "bytes",
-    "ETag": object.httpEtag || ""
+    "Accept-Ranges": "bytes"
   });
-  if (rangeRequested && object.range && typeof object.range.offset === "number" && typeof object.range.length === "number") {
-    const start = object.range.offset;
-    const length = object.range.length;
-    h.set("Content-Range", "bytes " + start + "-" + (start + length - 1) + "/" + object.size);
-    h.set("Content-Length", String(length));
+  if (object.httpEtag) h.set("ETag", object.httpEtag);
+  if (range) {
+    h.set("Content-Range", "bytes " + range.start + "-" + range.end + "/" + range.total);
+    h.set("Content-Length", String(range.length));
   } else {
     h.set("Content-Length", String(object.size));
   }
