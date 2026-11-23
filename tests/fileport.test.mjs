@@ -73,7 +73,9 @@ test("browser assets have no storage credentials or signed S3 URLs", async () =>
   assert.doesNotMatch(html+app,/S3_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|DATABASE_URL|X-Amz-Signature/);
   const source=await readFile(new URL("../functions/api/[[path]].js",import.meta.url),"utf8");
   assert.doesNotMatch(source,/getSignedUrl|X-Amz-/);
-  assert.match(source,/FILEPORT_BUCKET\.get/);
+  assert.match(source,/storageGet\(env, providerForFile\(file\)/);
+  assert.match(source,/storagePut\(env, provider/);
+  assert.match(source,/storage_provider/);
   assert.match(source,/revoked_at IS NULL AND expires_at > now\(\)/);
   assert.match(source,/f\.state='approved'/);
 });

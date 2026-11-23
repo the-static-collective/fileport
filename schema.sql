@@ -1,4 +1,4 @@
--- STATIC FILEPORT · dedicated Neon project metadata; bytes live in private Cloudflare R2.
+-- STATIC FILEPORT · dedicated Neon metadata and primary Neon Object Storage; optional R2 backend.
 -- Applied 2026-11-23 to Neon project delicate-darkness-21715937 / main.
 CREATE TABLE IF NOT EXISTS public.fileport_workspaces (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.fileport_workspaces (
 CREATE TABLE IF NOT EXISTS public.fileport_files (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  workspace_id uuid NOT NULL REFERENCES public.fileport_workspaces(id),
+ storage_provider text NOT NULL DEFAULT 'neon' CHECK (storage_provider IN ('neon','r2')),
  storage_key text NOT NULL UNIQUE,
  display_name text NOT NULL CHECK (char_length(display_name) BETWEEN 1 AND 255),
  mime_type text NOT NULL DEFAULT 'application/octet-stream',

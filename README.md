@@ -1,64 +1,76 @@
-# STATIC FILEPORT · The Living Intranet
+# STATIC FILEPORT · Neon-first Living Intranet
 
-**Canonical code:** https://github.com/the-static-collective/fileport
-**Permanent public address (planned):** https://fileport.abundent.org
+**Repository:** https://github.com/the-static-collective/fileport
+**Planned permanent address:** https://fileport.abundent.org
+**Dedicated Neon project:** STATIC FILEPORT (`delicate-darkness-21715937`)
 
-Fileport is a standalone, owner-operated private file delivery service with modular project homes. It is separate from WillowLab's website and Git branches. Files are stored in **private Cloudflare R2**, share metadata lives in a dedicated **Neon Postgres** project, and Cloudflare Pages serves both the workbench and the receiving page.
+Fileport is a standalone private file workbench and delivery gateway. **Neon Object Storage is the primary home for actual files.** Neon Postgres holds project homes, metadata, approvals, hashes of share tokens, and minimal access events. Cloudflare Pages serves the interface and streams authorized file bytes under the **same Fileport domain**. Cloudflare R2 remains an **optional secondary adapter**, available for future expansion; no R2 bucket is required.
 
-## Real-world interaction
+## What exists
 
-1. Owner opens the workbench and enters their private operator key.
-2. Owner chooses a project home (e.g., Static Collective or WillowLab) and drops a file (pilot limit 25 MiB).
-3. New files remain **staged**. Owner explicitly approves a file before sharing.
-4. Owner ticks approved files, adds a package title and expiry, then copies one invitation link.
-5. Recipient opens the link, streams video or downloads approved files on the **same Fileport domain**, without registering an account.
-6. Owner can revoke the invitation or rotate its bearer token. Old links immediately fail further authorization checks.
+- Workspaces for the Static Collective, WillowLab, and any additional owner-created project.
+- Owner-only drag-and-drop upload (pilot limit 25 MiB per file), explicit file approval/disable.
+- Private expiring invitation packages (24 hours, 3 days, 7 days, 30 days), rotation and revocation.
+- Recipient video streaming and downloads using authenticated **same-origin GET**; correct HTTP Range and 206 response for seekable media. The browser never sees a Neon S3 or R2 object URL.
+- Each file records `storage_provider` (`neon` or `r2`) alongside its `storage_key`. Reads use this recorded provider; switching future upload provider **does not make existing files disappear**.
+- GitHub security checks, Node tests, Cloudflare Wrangler Pages Functions bundle check.
 
-**No one needs to open GitHub, Cloudflare, or Neon for routine uploads and sharing.** Those services are the infrastructure, not the user interface.
+**Storage provisioned:** Neon private bucket `static-fileport-private` was created in dedicated project STATIC FILEPORT. The database schema and its additive `storage_provider` migration were applied to that project. The project has no uploaded file records yet. Existing WillowLab assets in a separate Neon project were **not copied, deleted, or shared**.
 
-## What's built and what's not
+**Status:** Source and database are prepared; Fileport is not a verified live domain until Cloudflare is connected and a real upload/playback/revocation test passes.
 
-- Implemented in this repo: owner dashboard, workspaces, upload/approval, private invite creation, invite refresh/revocation, minimal access receipts, same-origin protected download and HTTP range streaming for media.
-- Dedicated Neon project **STATIC FILEPORT** (`delicate-darkness-21715937`) created, schema applied, and Static Collective + WillowLab homes seeded.
-- GitHub workflow checks the code and builds static assets; Cloudflare automatically deploys approved changes from `main` once connected.
-- **Not live until Cloudflare Pages, a private R2 bucket binding, runtime secrets, and `fileport.abundent.org` are configured and end-to-end tests pass.**
-- The video from the old WillowLab proof-of-concept still lives in its original Neon private bucket. It has **not** been silently copied to this new system. Upload it once through Fileport when the workbench is operational.
+## Routine owner use
 
-## One-time Cloudflare setup
+1. Open `fileport.abundent.org`, unlock the owner workbench with the private key.
+2. Select a project home, drop a file. It stays staged until approved.
+3. Approve it, select approved files, choose expiry, create one private invitation.
+4. Recipient opens invitation, plays/downloads without creating an account.
+5. Revoke or rotate invitations at any time.
 
-1. In Cloudflare R2 create a **private** bucket named `static-fileport-private`; do not enable public bucket access.
-2. Workers & Pages → Create Pages application → Connect to Git → select `the-static-collective/fileport`.
-3. Set **production branch** `main`; **root directory** blank; **build command** `npm run build`; **output directory** `dist`. Cloudflare installs `package.json` dependencies automatically.
-4. Under Pages → Settings → Bindings → R2 bucket, add variable name `FILEPORT_BUCKET` pointing to the private bucket `static-fileport-private`, for the **Production** environment.
-5. Under Settings → Variables and secrets → **Production**, add **encrypted** `DATABASE_URL` (from Neon project STATIC FILEPORT → Connect → Postgres) and **encrypted** `FILEPORT_ADMIN_TOKEN` (an unpredictable secret of at least 32 characters).
-6. To generate your own operator key locally: `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Save it in your password manager. **Never paste it into chat, files, GitHub, or a shared screenshot.**
-7. Deploy `main`. Visit `/api/health` and expect `{ "ok": true, "storage": true, "database": true }` only when the runtime is wired correctly.
-8. Test owner login, a small file upload, approval, invitation, playback/download on a separate browser, expiration and revocation.
-9. Under Pages → Custom domains, connect `fileport.abundent.org` and follow the DNS instructions shown for your zone. Verify HTTPS and repeat the recipient test using that permanent domain.
+No GitHub, Neon, or Cloudflare dashboard should be needed for routine delivery.
 
-**Important:** The old WillowLab Cloudflare Pages application and its `main` production branch are separate; do not retarget them. The old Neon bucket remains private and untouched.
+## One-time Cloudflare Pages deployment
 
-## Development
+1. **Workers & Pages → Create Pages project → Connect to Git**: repo `the-static-collective/fileport`, branch `main`.
+2. Set build command `npm run build`, output directory `dist`, root directory blank. `wrangler.toml` sets compatibility date and `nodejs_compat`.
+3. In Cloudflare Pages **Production → Variables and secrets**, set these **encrypted** secrets. **Do not put them in GitHub or this chat**:
+   - `DATABASE_URL`: Neon **STATIC FILEPORT → Connect → Postgres** connection string.
+   - `FILEPORT_ADMIN_TOKEN`: a random secret of at least 32 characters, saved in your password manager. Example generator: `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`.
+   - `NEON_S3_ACCESS_KEY_ID`: `nak_live_...` key ID from **STATIC FILEPORT → Connect → Storage**.
+   - `NEON_S3_SECRET_ACCESS_KEY`: the **matching** `nsk_live_...` storage secret from the **same credential**, not the API token.
+4. Neon's nonsecret endpoint and bucket are already configured in server source. Override only when needed: `NEON_S3_ENDPOINT`, `NEON_S3_BUCKET`, `NEON_S3_REGION`; by default these target the known project branch, `static-fileport-private`, and `us-east-1`.
+5. **No R2 binding needed.** Deploy `main`; visit `/api/health` (shows database reachable and storage *configured*, not yet verified). Then unlock owner workbench: owner `/api/admin/status` actually probes private Neon bucket and refuses to unlock if storage authentication fails.
+6. Test an innocuous upload, approval, private invitation, video playback/download, byte seeking, rotate/revoke using another device.
+7. Once tests pass, set Pages **Custom domains** → `fileport.abundent.org`, follow Cloudflare DNS instructions and repeat the test over HTTPS.
 
-Requires Node 22+. From a local checkout: `npm install && npm run check`.
+**Note on previous broken links:** Existing WillowLab preview URLs and the older Neon S3 presigned test links are unrelated to this app. A new Fileport invitation must be created *inside Fileport* after successful setup.
 
-- `public/` browser assets (no private credentials)
-- `functions/api/[[path]].js` Cloudflare Pages Functions route
-- `lib/core.js` validation, tokens, cookies, and security helpers
-- `schema.sql` Postgres schema (already applied to the dedicated project)
-- `scripts/build.mjs` produces `dist/` with only public assets
-- `.github/workflows/ci.yml` runs unit/security contract checks
+## Optional second provider: R2
 
-## Security and boundaries
+The code already includes both adapters: `lib/storage.js`.
 
-- Strong owner secret required; no public admin registration. Owner key stays in tab session storage, never in the URL. This is a **single-operator pilot**, not multi-user SSO; strengthen with Cloudflare Access before inviting multiple administrators.
-- Invite tokens are 32 random bytes, hashed with SHA-256 before storing in Postgres, and transmitted from URL fragment to a same-origin API.
-- The receiving API issues a bounded `HttpOnly; Secure; SameSite=Lax` share cookie. File streaming rechecks expiry, revocation, membership, and file approval on every request.
-- Storage access uses the Cloudflare R2 **server-side binding**, not presigned S3 query URLs, so link tracking parameters cannot break file authentication.
-- Private files are never exposed as public R2 URLs. No IP addresses, recipient email addresses or tracking pixels are stored in the Fileport event ledger.
-- Shares are bearer links; people can forward them. Already downloaded copies cannot be remotely revoked. This is not a DRM service.
-- The app limits single uploads to 25 MiB and is not yet a resumable/multipart uploader. See `OPERATIONS.md` for constraints and the release gate.
+- Default: all new uploads go to **Neon**.
+- Later, to use R2 for **new** files, bind an R2 bucket to Cloudflare Pages under `FILEPORT_BUCKET`, and set the trusted server-side variable `FILEPORT_WRITE_PROVIDER=r2`. Leave Neon credentials in place.
+- The file record stores whether it lives in Neon or R2. Old Neon files **keep streaming from Neon**, and new R2 files stream from R2 with the same invitation interface.
+- This is provider routing, **not yet automatic replication, tiered caching, failover, or migration**. Those require separate verification and explicit object-copy operations.
 
-## Project lineage
+Do not use an R2 public bucket or make the private Neon bucket public.
 
-Fileport grew out of `the-static-collective/willowlab` draft PR #2; that pilot remains as historical evidence. The independent Fileport repository is now the source of truth for the service. This does not expose Colton's private WillowConnect data.
+## Code map
+
+- `functions/api/[[path]].js`: Cloudflare Pages owner and recipient APIs
+- `lib/storage.js`: Neon S3 primary + optional native R2 adapter
+- `lib/core.js`: tokens, validation, headers, range parsing
+- `schema.sql`: current schema; `migrations/002_neon_primary.sql`: additive upgrade
+- `public/`: private owner workbench and recipient player
+- `wrangler.toml`: Cloudflare runtime config, no credentials
+- `tests/`: API safety and provider routing tests
+- `OPERATIONS.md`: release gate, security boundaries, troubleshooting
+
+## Privacy and operational boundaries
+
+The owner secret is a single administrator credential, held only in the browser tab's session storage while unlocked. This is a single-operator pilot, **not multi-user role-based access**. For multiple operators or sensitive customer records, add verified sign-in, scoped authorization, and a security review.
+
+Invitation URLs are bearer capabilities and can be forwarded. Their 256-bit tokens are stored only as SHA-256 hashes in Postgres. Protected file requests recheck share expiry, revocation, membership, and file approval. Previously downloaded copies cannot be revoked. The audit ledger contains no recipient IP address or email.
+
+See `OPERATIONS.md` before external release.

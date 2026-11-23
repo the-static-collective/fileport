@@ -1,53 +1,56 @@
-# Fileport · Operations and Release Gate
+# STATIC FILEPORT · Neon-first operational runbook
 
-## Policy
+## System boundaries
+- **Canonical bytes:** private Neon Object Storage bucket `static-fileport-private` in Neon project `delicate-darkness-21715937`, branch `br-billowing-rain-bcf3ywwi`.
+- **Metadata:** Neon Postgres, same project; schema migration `migrations/002_neon_primary.sql` applied to `main` on Nov 23, 2026.
+- **Public gateway:** Cloudflare Pages `fileport.abundent.org` after custom-domain activation; only owner-approved sharing may expose bytes.
+- **Secondary provider:** R2 adapter supported for future objects; binding absent by default, **not required**.
+- **Upload routing:** `FILEPORT_WRITE_PROVIDER` defaults to `neon`, can explicitly become `r2` after R2 binding.
+- **Per-file routing:** `fileport_files.storage_provider` stores object location; no automatic or implicit fallback between clouds.
 
-Goal: **zero infrastructure dashboard visits for ordinary file delivery**. The owner's everyday workflow is open → upload → approve → copy invite → send; recipients open or stream. Cloudflare and Neon only surface for infrastructure administration and incident response.
+## Deployment checklist
+- [ ] GitHub `main` has latest tested Fileport implementation.
+- [ ] Cloudflare Pages project `fileport` attached to `the-static-collective/fileport`; `npm run build` outputs `dist`.
+- [ ] Production secrets: `DATABASE_URL`, `FILEPORT_ADMIN_TOKEN`, `NEON_S3_ACCESS_KEY_ID`, `NEON_S3_SECRET_ACCESS_KEY`. All encrypted; do not commit credentials. The Neon S3 access ID and secret must be the **same Neon credential**.
+- [ ] No R2 binding required. Do not choose `FILEPORT_WRITE_PROVIDER=r2` until R2 is actually attached.
+- [ ] `GET /api/health` succeeds, meaning database and environment are *configured*. It is not a storage verification.
+- [ ] Owner can unlock; `/api/admin/status` probes Neon storage for a real authenticated list operation before returning success.
+- [ ] Upload a harmless small MP4: new record `storage_provider=neon`, staged. Explicitly approve.
+- [ ] Open a share in a separate browser and verify same-domain playback, Range `206`, and download.
+- [ ] Rotate link (old URL fails); revoke link (file access fails).
+- [ ] Configure `fileport.abundent.org` as Pages custom domain, verify HTTPS; repeat cross-device test.
+- [ ] Only after successful testing, share actual assets.
 
-## Architecture
+## Storage credentials
 
-- Pages (this repo) hosts the interface and `functions/api/[[path]].js`.
-- R2 (`FILEPORT_BUCKET`) holds **private** object bytes. No public `r2.dev` address.
-- Neon (`DATABASE_URL`) stores projects, file metadata, hashed invitations and minimal audit events; project ID: `delicate-darkness-21715937`.
-- Recipients receive only a URL fragment token. Opening it sets a same-origin HttpOnly share cookie. Protected GETs include video Range support; the server checks share validity each time.
+Neon → project STATIC FILEPORT → Connect → Storage supplies:
+- Key ID (`nak_live_...`) → `NEON_S3_ACCESS_KEY_ID`
+- Matching S3 secret (`nsk_live_...`) → `NEON_S3_SECRET_ACCESS_KEY`
+- S3 endpoint/region already configured in backend defaults
 
-## Operator access
+Do **not** paste secrets into chat, PRs, screenshots, Github Actions variables, or browser JavaScript. Cloudflare encrypted Production secrets only. A wrong credential pair will cause authenticated private storage probe to fail; changing GitHub code will not repair wrong credentials.
 
-`FILEPORT_ADMIN_TOKEN` must be at least 32 unpredictable characters, stored in Cloudflare **encrypted Production secrets**. Keep a copy in the owner's password manager. A visitor without it cannot upload, list projects, approve, or share. This token grants complete authority to the pilot owner. Do not distribute it to Colton or other recipients. Before team access, integrate verified identity, per-project membership and audit-backed authorization. Do not store this token in source control or use a memorable password.
+## Common failures
 
-## First live verification — mandatory
-
-- [ ] Cloudflare Pages project points to `the-static-collective/fileport`, production branch `main`.
-- [ ] `npm run build` successfully publishes `dist` and bundles Pages Functions.
-- [ ] Private R2 bucket `static-fileport-private` has a Production `FILEPORT_BUCKET` binding.
-- [ ] Neon `DATABASE_URL` and long random `FILEPORT_ADMIN_TOKEN` exist only as encrypted Production secrets.
-- [ ] `/api/health` returns `{ok:true,storage:true,database:true}`.
-- [ ] Owner logs in, uploads 1 small harmless file, explicitly approves it, and makes a 1-hour invitation.
-- [ ] Recipient opens it in a different browser/device, views a video and downloads a matching file.
-- [ ] Revoke the invitation: new opens fail; refresh invitation: old URL fails.
-- [ ] Attach `fileport.abundent.org` and repeat using HTTPS on that **one permanent hostname**.
-- [ ] Only then send the actual WillowLab video through a new approved share.
-
-## Known limits
-
-- Files capped at 25 MiB in this pilot; avoid large or confidential customer archives until additional security review.
-- Uploaded objects are private; disabling a file or revoking a share prevents subsequent authorized reads but cannot erase bytes already saved by recipients.
-- Each share open stores a cookie for up to 12 hours, bounded by the invitation expiry; every file read still checks the live database.
-- An owner key remains in session storage for the active browser tab. Locking the workbench clears it.
-- One globally powerful owner key, rather than per-user permissions. If compromised, replace the Cloudflare secret and close existing sessions.
-- Activity receipts are minimal; they are not proof that a recipient actually watched a video.
-- The old WillowLab Neon-uploaded video has not been migrated; re-upload via the new workbench. Do not delete the original until a verified new delivery exists.
-
-## Troubleshooting
-
-| Symptom | Next check |
+| Observation | Action |
 |---|---|
-| `Nothing is here yet` | Incorrect preview alias or a Pages project not yet deployed; use configured production hostname. |
-| `/api/health` returns 503 | Confirm Production `DATABASE_URL` and `FILEPORT_BUCKET` binding; view Pages Function logs. |
-| Login returns 401 | Check Production `FILEPORT_ADMIN_TOKEN` and use the saved owner key. Never paste it in logs. |
-| Upload returns 503 | Inspect R2 binding and Neon project; object bytes and metadata must both succeed. |
-| Recipient cannot open invitation | Confirm share unexpired, not revoked, approved file, and same domain in invite URL. |
-| Media player cannot seek | Inspect `Range` response (`206` and `Content-Range`) in browser network panel. |
-| Domain gives a parking page | Check Pages custom domain and DNS configuration, not an old random preview URL. |
+| "Nothing is here yet" | Wrong or unconfigured Cloudflare Pages address; use production project or the configured permanent domain. |
+| Health 503 | DATABASE_URL or Neon storage credentials absent or malformed. |
+| Health OK, owner unlock 503 | Private Neon S3 credential/bucket inaccessible or unmatched; check same-pair credentials. |
+| Upload 503 | Private Neon storage PUT or database insert failed; consult Pages runtime logs (without tokens). |
+| Video 206 not returned | Check Range request and storage backend range handling; verify Content-Range. |
+| Existing file unavailable after provider switch | Check recorded `storage_provider`, not current `FILEPORT_WRITE_PROVIDER`. Do not overwrite metadata blindly. |
+| Share does not open | Confirm expiry, revocation, approved file, same hostname, and HttpOnly cookie. |
 
-**Do not use the old WillowLab static site as Fileport production.**
+## Limitations / next work
+
+- The 25 MiB per-file pilot cap remains; no resumable uploads, CDN caching, or automatic multi-cloud copy.
+- Owner uses one shared secret with full access. Not appropriate for independent untrusted users without per-workspace roles.
+- Private server-side streaming avoids exposing presigned URLs but consumes Cloudflare/Neon request and transfer quotas.
+- R2 is a secondary routing option, **not** an established replicated archive. Copying objects between providers requires a separate explicitly authorized migration workflow.
+- Neon quotas and egress depend on the active plan and project; monitor storage consumption before bulk ingest.
+- Old WillowLab assets remain in a separate Neon bucket, not yet imported.
+
+## Engineering checks
+
+`npm install && npm run check`. CI also builds Pages Functions with Wrangler, confirms public asset output contains no server code or database credentials.

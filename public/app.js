@@ -154,7 +154,7 @@ function renderFiles() {
     const icon = node("span","file-icon",file.mime_type.startsWith("video/") ? "▶" : "↳");
     const info = node("div","file-info");
     info.append(node("strong","",file.display_name));
-    info.append(node("small","",size(file.bytes) + " · " + when(file.created_at)));
+    info.append(node("small","",size(file.bytes) + " · " + when(file.created_at) + " · " + (file.storage_provider || "unknown").toUpperCase()));
     const actions = node("div","file-actions");
     const pill = node("span","pill " + file.state,file.state.toUpperCase());
     const button = node("button","button small outline",file.state === "approved" ? "Disable" : "Approve");
