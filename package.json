@@ -1,6 +1,6 @@
 {
   "name": "static-fileport",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,6 +9,7 @@
     "check": "npm run test && npm run build"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.0"
+    "@neondatabase/serverless": "^1.0.0",
+    "@aws-sdk/client-s3": "^3.900.0"
   }
 }
