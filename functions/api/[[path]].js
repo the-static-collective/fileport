@@ -260,13 +260,13 @@ export async function onRequest({ request, env }) {
       await sql.query("SELECT 1");
       return json({ ok: true, storage: true, database: true });
     }
-    if (pathname.startsWith("/api/admin/")) return handleOwner(request, env, sql, pathname, url);
-    if (pathname === "/api/share/open") return handleShareOpen(request, env, sql);
+    if (pathname.startsWith("/api/admin/")) return await handleOwner(request, env, sql, pathname, url);
+    if (pathname === "/api/share/open") return await handleShareOpen(request, env, sql);
     if (pathname === "/api/share/logout" && request.method === "POST") {
       return json({ ok: true }, 200, { "Set-Cookie": removeShareCookie() });
     }
     if (pathname.startsWith("/api/share/file/")) {
-      return handleShareFile(request, env, sql, pathname.slice("/api/share/file/".length));
+      return await handleShareFile(request, env, sql, pathname.slice("/api/share/file/".length));
     }
     return error("Not found", 404);
   } catch (err) {
