@@ -1,0 +1,24 @@
+name: Fileport build and security checks
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers
+      - name: Verify private server modules are never in static output
+        run: |
+          test ! -e dist/lib
+          test ! -e dist/functions
+          test ! -e dist/schema.sql
