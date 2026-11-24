@@ -157,3 +157,12 @@ input:disabled,select:disabled { opacity: .65; }
  .file-actions { width: 100%; padding-left: 28px; justify-content: flex-end; }
  .file-info strong { white-space: normal; }
 }
+
+
+/* STATIC ID owner entrance: secure shared login first, recovery key behind an intentional choice. */
+.owner-entrances { display:flex; flex-direction:column; align-items:flex-start; gap:10px; min-width:min(100%,320px); }
+.owner-entrances #identity-status { margin:0; max-width:310px; line-height:1.4; }
+.recovery-access { width:100%; font-size:13px; color:var(--muted); }
+.recovery-access summary { cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+.recovery-access .login-form { margin-top:10px; }
+.owner-entrances [hidden] { display:none !important; }

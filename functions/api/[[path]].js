@@ -1,5 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import {
+  handleStaticIdRequest, requireStaticIdOwner
+} from "@the-static-collective/static-id/cloudflare";
+import {
   MAX_UPLOAD_BYTES, json, validUuid, validSlug, validToken,
   cleanName, mimeType, generateToken, sha256, adminAuthorized,
   cookieToken, shareCookie, removeShareCookie, contentDisposition,
@@ -108,7 +111,12 @@ async function handleShareFile(request, env, sql, fileId) {
 }
 
 async function handleOwner(request, env, sql, pathname, url) {
-  if (!await adminAuthorized(request, env)) return error("Owner key required", 401);
+  // STATIC ID and legacy admin recovery are independent paths.
+  // Never infer privilege from an unverified email, browser flag, or upstream login alone.
+  const recoveryAuthorized = await adminAuthorized(request, env);
+  if (!recoveryAuthorized && !await requireStaticIdOwner(request, env)) {
+    return error("Owner login required", 401);
+  }
 
   if (pathname === "/api/admin/status" && request.method === "GET") {
     await sql.query("SELECT 1");
@@ -263,6 +271,11 @@ export async function onRequest({ request, env }) {
   const pathname = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
   const url = new URL(request.url);
   if (!pathname.startsWith("/api/")) return error("Not found", 404);
+  // Identity routes are independent of the file-storage health gate.
+  // Without STATIC_ID_* settings these return 503 and legacy owner recovery stays functional.
+  if (pathname.startsWith("/api/static-id/")) {
+    return await handleStaticIdRequest(request, env);
+  }
   if (!configured(env)) return error("Fileport not configured", 503);
   try {
     const sql = db(env);

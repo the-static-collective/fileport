@@ -54,3 +54,19 @@ Do **not** paste secrets into chat, PRs, screenshots, Github Actions variables, 
 ## Engineering checks
 
 `npm install && npm run check`. CI also builds Pages Functions with Wrangler, confirms public asset output contains no server code or database credentials.
+
+
+## FILEPORT 003 · STATIC ID handoff (not yet activated)
+
+- [ ] Existing HUMKIN owner Proton Authenticator login and `/oauth/consent/` work. **No new enrollment**.
+- [ ] Confirm HUMKIN Supabase OAuth 2.1 server, consent and asymmetric signed ID tokens; do not casually rotate keys or change the shared Auth Site URL.
+- [ ] Register Fileport as a **confidential** client with exact callback `https://fileport.abundent.org/api/static-id/callback`.
+- [ ] Add encrypted `STATIC_ID_CLIENT_ID`, `STATIC_ID_CLIENT_SECRET`, `STATIC_ID_OWNER_SUB` and `STATIC_ID_COOKIE_KEY` to Fileport's Production secrets (app origin and issuer already in `wrangler.toml`).
+- [ ] Deploy on real `fileport.abundent.org`. Confirm `GET /api/static-id/status` responds 200 (not 503), then sign in using existing HUMKIN identity, verify approved owner read/write, file upload and share.
+- [ ] Check another Supabase user receives 401, wrong OAuth client receives 401, rejected OAuth state fails, forged JWT fails, expired session fails, and no-origin cross-site POST is refused.
+- [ ] Confirm `FILEPORT_ADMIN_TOKEN` recovery access continues working independently.
+- [ ] Check `POST /api/static-id/logout` clears app cookie. **It does not globally log out of HUMKIN or other apps.**
+
+**No new TOTP secret or new authentication database.** Identity comes from the existing HUMKIN Supabase Auth user. Neon remains the independently governed Fileport metadata and object-store backend. STATIC ID is a shared verification adapter, not implicit access to every app.
+
+**Current user-visible caveat:** session max one hour; lack of refresh may require another OAuth redirect. Do not claim long-lived seamless SSO until refresh and session revocation are built and verified.

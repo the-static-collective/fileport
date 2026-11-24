@@ -54,11 +54,18 @@
 
       <section class="access-band" id="login-panel" aria-labelledby="login-title">
         <div><p class="overline">OWNER ENTRANCE</p><h2 id="login-title">Step inside the workbench.</h2><p>Private operator access. Recipients never need to sign in.</p></div>
-        <form id="login-form" class="login-form">
-          <label class="sr-only" for="owner-key">Owner key</label>
-          <input id="owner-key" type="password" autocomplete="off" spellcheck="false" placeholder="Owner key" required minlength="32">
-          <button class="button primary" type="submit">Open workbench <span aria-hidden="true">↗</span></button>
-        </form>
+        <div class="owner-entrances">
+          <a id="static-id-login" class="button primary" href="/api/static-id/login" hidden>Unlock with STATIC ID <span aria-hidden="true">↗</span></a>
+          <p id="identity-status" class="muted" role="status">Checking shared identity…</p>
+          <details class="recovery-access">
+            <summary>Emergency owner-key recovery</summary>
+            <form id="login-form" class="login-form">
+              <label class="sr-only" for="owner-key">Recovery owner key</label>
+              <input id="owner-key" type="password" autocomplete="off" spellcheck="false" placeholder="Recovery owner key" required minlength="32">
+              <button class="button outline" type="submit">Open with recovery key</button>
+            </form>
+          </details>
+        </div>
       </section>
 
       <section id="desk" hidden aria-label="Owner workbench">
