@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const state = {
   key: sessionStorage.getItem("fileport-owner-key") || "",
+  authMode: "",
   workspace: sessionStorage.getItem("fileport-workspace") || "",
   workspaces: [], files: [], shares: [], selected: new Set()
 };
@@ -33,10 +34,10 @@ function when(value) {
 }
 async function api(path, { method = "GET", data, owner = false } = {}) {
   const headers = { "Accept": "application/json" };
-  if (owner) headers.Authorization = "Bearer " + state.key;
+  if (owner && state.key) headers.Authorization = "Bearer " + state.key;
   if (data !== undefined) headers["Content-Type"] = "application/json";
   const response = await fetch(path, {
-    method, headers, credentials: owner ? "omit" : "same-origin",
+    method, headers, credentials: owner && state.key ? "omit" : "same-origin",
     cache: "no-store", body: data === undefined ? undefined : JSON.stringify(data)
   });
   const result = await response.json().catch(() => ({}));
@@ -70,13 +71,16 @@ async function checkHealth() {
 
 async function openWorkbench() {
   await api("/api/admin/status", { owner: true });
-  sessionStorage.setItem("fileport-owner-key", state.key);
+  state.authMode = state.key ? "recovery" : "staticid";
+  if (state.key) sessionStorage.setItem("fileport-owner-key", state.key);
+  else sessionStorage.removeItem("fileport-owner-key");
   $("login-panel").hidden = true;
   $("desk").hidden = false;
   await loadWorkspaces();
   await loadActivity();
 }
 function lockWorkbench() {
+  state.authMode = "";
   state.key = "";
   state.files = []; state.shares = []; state.workspaces = []; state.selected.clear();
   sessionStorage.removeItem("fileport-owner-key");
@@ -235,7 +239,8 @@ async function upload(file) {
     await new Promise((resolve,reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT","/api/admin/upload?workspace=" + encodeURIComponent(state.workspace));
-      xhr.setRequestHeader("Authorization","Bearer " + state.key);
+      if (state.key) xhr.setRequestHeader("Authorization","Bearer " + state.key);
+      else xhr.withCredentials = true;
       xhr.setRequestHeader("Content-Type",file.type || "application/octet-stream");
       xhr.setRequestHeader("X-File-Name",encodeURIComponent(file.name));
       xhr.upload.addEventListener("progress", e => {
@@ -309,7 +314,13 @@ function bindEvents() {
     try { await openWorkbench(); toast("Workbench opened."); }
     catch (e) { lockWorkbench(); toast(e.message,true); }
   });
-  $("sign-out").addEventListener("click",lockWorkbench);
+  $("sign-out").addEventListener("click",async () => {
+    if (state.authMode === "staticid") {
+      try { await fetch("/api/static-id/logout", { method:"POST", credentials:"same-origin", cache:"no-store" }); }
+      catch { toast("Unable to contact shared sign-out; retry when online.",true); return; }
+    }
+    lockWorkbench();
+  });
   $("workspace-picker").addEventListener("change", async event => {
     state.workspace = event.target.value;
     sessionStorage.setItem("fileport-workspace",state.workspace);
@@ -355,14 +366,33 @@ function bindEvents() {
   });
   $("copy-share").addEventListener("click",() => copy($("share-url").value));
 }
+async function checkStaticId() {
+  const status = $("identity-status"),button = $("static-id-login");
+  try {
+    const response = await fetch("/api/static-id/status",{credentials:"same-origin",cache:"no-store"});
+    if (!response.ok) throw Error("identity offline");
+    const data = await response.json();
+    button.hidden = false;
+    if (data.authenticated) {
+      state.key = "";
+      try { await openWorkbench(); return; }
+      catch { status.textContent = "Signed in, but Fileport storage is not ready."; return; }
+    }
+    status.textContent = "Sign in with your existing HUMKIN identity and Proton Authenticator.";
+  } catch {
+    button.hidden = true;
+    status.textContent = "Shared login is not connected yet. Emergency recovery remains available.";
+  }
+}
 async function init() {
   bindEvents();
   checkHealth();
   const token = new URLSearchParams(location.hash.slice(1)).get("share");
   if (token) { await showReceiver(token); return; }
   if (state.key) {
-    try { await openWorkbench(); }
+    try { await openWorkbench(); return; }
     catch { lockWorkbench(); }
   }
+  await checkStaticId();
 }
 init();
