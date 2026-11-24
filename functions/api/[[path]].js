@@ -10,7 +10,7 @@ import {
 } from "../../lib/core.js";
 import {
   storageConfigured, writeProvider, providerForFile,
-  storageProbe, storagePut, storageGet, storageDelete
+  storagePut, storageGet, storageDelete
 } from "../../lib/storage.js";
 
 function configured(env) {
@@ -120,10 +120,13 @@ async function handleOwner(request, env, sql, pathname, url) {
 
   if (pathname === "/api/admin/status" && request.method === "GET") {
     await sql.query("SELECT 1");
-    await storageProbe(env, "neon");
+    // Opening the workbench only requires authorized access to metadata.
+    // Bucket-wide listing is not needed to list workspaces or share existing files.
+    // Actual object reads/writes retain their existing provider and error checks.
     return json({
       ok: true, maxUploadBytes: MAX_UPLOAD_BYTES, primaryProvider: "neon",
-      uploadProvider: writeProvider(env), r2Available: Boolean(env.FILEPORT_BUCKET)
+      uploadProvider: writeProvider(env), r2Available: Boolean(env.FILEPORT_BUCKET),
+      storageVerified: false
     });
   }
   if (pathname === "/api/admin/workspaces" && request.method === "GET") {

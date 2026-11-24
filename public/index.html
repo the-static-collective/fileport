@@ -42,7 +42,7 @@
 
     <section id="operator" aria-labelledby="intro-heading">
       <div class="section-label"><span>A QUIET PLACE FOR HANDOFFS</span><span>THE STATIC COLLECTIVE</span></div>
-      <section class="hero">
+      <section class="hero" id="intro-hero">
         <div class="hero-copy">
           <p class="overline"><span class="spark">✳</span> THE LIVING INTRANET / FILEPORT</p>
           <h1 id="intro-heading">Make a file.<br>Give it a <em>home.</em><br>Let it go.</h1>
@@ -73,6 +73,8 @@
           <div><p class="overline">YOUR WORKBENCH</p><h2>A little more room to make.</h2><p class="muted">Upload → approve → share. Everything else stays in the machinery.</p></div>
           <button class="button quiet" id="sign-out" type="button">Lock workbench</button>
         </div>
+        <p id="desk-status" role="status" aria-live="polite" class="muted"></p>
+        <button class="button quiet" id="retry-workspaces" type="button">Retry workspaces</button>
         <div class="workspace-bar">
           <div class="workspace-field">
             <label for="workspace-picker">PROJECT / HOME</label>
