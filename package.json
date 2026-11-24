@@ -11,6 +11,6 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
     "@aws-sdk/client-s3": "^3.900.0",
-    "@the-static-collective/static-id": "git+https://github.com/the-static-collective/staticID.git#8ab7c8625e0bc0e98f7b6dbacc71a0de587813db"
+    "@the-static-collective/static-id": "git+https://github.com/the-static-collective/staticID.git#0d7dd6552e972599f846d3ca8b417913a9cf2dc4"
   }
 }
