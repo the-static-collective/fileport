@@ -74,3 +74,17 @@ The owner secret is a single administrator credential, held only in the browser 
 Invitation URLs are bearer capabilities and can be forwarded. Their 256-bit tokens are stored only as SHA-256 hashes in Postgres. Protected file requests recheck share expiry, revocation, membership, and file approval. Previously downloaded copies cannot be revoked. The audit ledger contains no recipient IP address or email.
 
 See `OPERATIONS.md` before external release.
+
+
+## STATIC ID owner sign-in (FILEPORT 003, optional until configured)
+
+Fileport now supports one shared identity login with the HUMKIN Supabase user already paired in Proton Authenticator, via the reviewed [STATIC ID library](https://github.com/the-static-collective/staticID). **No new Proton seed or QR code.**
+
+- **Normal login:** `Unlock with STATIC ID` sends the browser through the existing HUMKIN Supabase OAuth server and returns a secure app-local cookie after proving the exact owner UUID and Fileport OAuth client.
+- **Recovery:** the existing encrypted `FILEPORT_ADMIN_TOKEN` remains an independent emergency entrance, hidden under an explicit recovery disclosure. You already configured it; do **not** delete it during the rollout.
+- **Recipients:** untouched; invitation links do not require a login.
+- **Unconfigured:** `/api/static-id/status` returns 503; the new button stays hidden and the old owner-key login remains available.
+
+`wrangler.toml` sets only the known nonsecret identity issuer and domain. After verifying HUMKIN OAuth consent and registering a **confidential** Fileport client with redirect URI `https://fileport.abundent.org/api/static-id/callback`, supply four additional Cloudflare **encrypted** settings: `STATIC_ID_CLIENT_ID`, `STATIC_ID_CLIENT_SECRET`, `STATIC_ID_OWNER_SUB` (the **verified existing** Supabase Auth user UUID), and `STATIC_ID_COOKIE_KEY` (independent 32-byte base64url AES key). Never reuse the Fileport admin token as the cookie key.
+
+Source and operational details: [STATIC ID FILEPORT-ADAPTER](https://github.com/the-static-collective/staticID/blob/main/docs/FILEPORT-ADAPTER.md). The OAuth server, consent and actual owner login must pass a live field test before treating SSO as ready. Static ID 001 currently issues **one-hour maximum** app sessions without background refresh; a longer-term session design is future work.
