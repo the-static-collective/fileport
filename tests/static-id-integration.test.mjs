@@ -18,8 +18,9 @@ test("owner API explicitly supports pinned STATIC ID and independent legacy emer
   assert.match(source,/adminAuthorized/);
   assert.match(source,/!recoveryAuthorized && !await requireStaticIdOwner/);
   assert.match(source,/handleStaticIdRequest/);
-  assert.match(source,/pathname.startsWith\\("\/api\/static-id\/"\\)/);
-  assert.ok(source.indexOf("pathname.startsWith(\\"/api/static-id/\\")")<source.indexOf("if (!configured(env))"));
+  const identityRoute = 'pathname.startsWith("/api/static-id/")';
+  assert.ok(source.includes(identityRoute));
+  assert.ok(source.indexOf(identityRoute) < source.indexOf("if (!configured(env))"));
   assert.doesNotMatch(source,/STATIC_ID_COOKIE_KEY\s*=\s*["']/);
 });
 test("browser sends same-origin cookies for SSO, not a blank owner key header",async()=>{
