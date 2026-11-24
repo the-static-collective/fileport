@@ -34,3 +34,24 @@ test("browser sends same-origin cookies for SSO, not a blank owner key header",a
   assert.match(html,/Emergency owner-key recovery/);
   assert.doesNotMatch(html,/id="static-id-login"[^>]*hidden[^>]*>.*six-digit code/i);
 });
+
+test("owner entry stays metadata-only while actual authorization remains mandatory",async()=>{
+  const source=await readFile(new URL("../functions/api/[[path]].js",import.meta.url),"utf8");
+  const status=source.slice(source.indexOf('if (pathname === "/api/admin/status"'),source.indexOf('if (pathname === "/api/admin/workspaces"'));
+  assert.ok(status.includes('await sql.query("SELECT 1")'));
+  assert.doesNotMatch(status,/storageProbe\(/);
+  assert.ok(status.includes("storageVerified: false"));
+  assert.ok(source.indexOf("!recoveryAuthorized && !await requireStaticIdOwner") < source.indexOf('if (pathname === "/api/admin/status"'));
+});
+test("owner entry exposes workbench directly and reports partial failures without reauth loops",async()=>{
+  const app=await readFile(new URL("../public/app.js",import.meta.url),"utf8");
+  const html=await readFile(new URL("../public/index.html",import.meta.url),"utf8");
+  assert.match(app,/\$\("intro-hero"\)\.hidden = true/);
+  assert.match(app,/\$\("desk"\)\.scrollIntoView/);
+  assert.match(app,/Workspace loading failed/);
+  assert.match(app,/No active Fileport session/);
+  assert.match(app,/owner API authorization failed/);
+  assert.match(html,/id="desk-status"/);
+  assert.match(html,/id="retry-workspaces"/);
+  assert.match(app,/if \(!response.ok\) throw new Error\("Sign-out failed"\)/);
+});

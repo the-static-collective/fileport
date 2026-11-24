@@ -41,7 +41,11 @@ async function api(path, { method = "GET", data, owner = false } = {}) {
     cache: "no-store", body: data === undefined ? undefined : JSON.stringify(data)
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(result.error || "Request failed (" + response.status + ")");
+  if (!response.ok) {
+    const error = new Error(result.error || "Request failed (" + response.status + ")");
+    error.status = response.status;
+    throw error;
+  }
   return result;
 }
 async function copy(text) {
@@ -76,8 +80,16 @@ async function openWorkbench() {
   else sessionStorage.removeItem("fileport-owner-key");
   $("login-panel").hidden = true;
   $("desk").hidden = false;
-  await loadWorkspaces();
-  await loadActivity();
+  $("intro-hero").hidden = true;
+  $("desk").scrollIntoView({block:"start"});
+  try { await loadWorkspaces(); }
+  catch (e) {
+    $("desk-status").textContent = e.status === 401 ? "Your session is no longer authorized. Lock the workbench and sign in again." : "Signed in. Workspace loading failed; use Retry workspaces.";
+    return;
+  }
+  $("desk-status").textContent = "";
+  try { await loadActivity(); }
+  catch { $("desk-status").textContent = "Workspaces loaded. Activity history is temporarily unavailable."; }
 }
 function lockWorkbench() {
   state.authMode = "";
@@ -86,7 +98,9 @@ function lockWorkbench() {
   sessionStorage.removeItem("fileport-owner-key");
   $("owner-key").value = "";
   $("login-panel").hidden = false;
+  $("intro-hero").hidden = false;
   $("desk").hidden = true;
+  $("desk-status").textContent = "";
   $("new-share").hidden = true;
   toast("Workbench locked.");
 }
@@ -316,10 +330,17 @@ function bindEvents() {
   });
   $("sign-out").addEventListener("click",async () => {
     if (state.authMode === "staticid") {
-      try { await fetch("/api/static-id/logout", { method:"POST", credentials:"same-origin", cache:"no-store" }); }
+      try {
+        const response = await fetch("/api/static-id/logout", { method:"POST", credentials:"same-origin", cache:"no-store" });
+        if (!response.ok) throw new Error("Sign-out failed");
+      }
       catch { toast("Unable to contact shared sign-out; retry when online.",true); return; }
     }
     lockWorkbench();
+  });
+  $("retry-workspaces").addEventListener("click", async () => {
+    try { await openWorkbench(); }
+    catch { $("desk-status").textContent = "Could not reopen workbench. Lock it and sign in again, or check service status."; }
   });
   $("workspace-picker").addEventListener("change", async event => {
     state.workspace = event.target.value;
@@ -373,12 +394,19 @@ async function checkStaticId() {
     if (!response.ok) throw Error("identity offline");
     const data = await response.json();
     button.hidden = false;
-    if (data.authenticated) {
+    if (data.authenticated === true) {
       state.key = "";
+      sessionStorage.removeItem("fileport-owner-key");
       try { await openWorkbench(); return; }
-      catch { status.textContent = "Signed in, but Fileport storage is not ready."; return; }
+      catch (e) {
+        status.textContent = e.status === 401
+          ? "Identity session found, but owner API authorization failed."
+          : "Signed in successfully. Fileport service is temporarily unavailable; retry or check service status.";
+        button.textContent = "Sign in again";
+        return;
+      }
     }
-    status.textContent = "Sign in with your existing HUMKIN identity and Proton Authenticator.";
+    status.textContent = "No active Fileport session. Sign in with your existing HUMKIN identity and Proton Authenticator.";
   } catch {
     button.hidden = true;
     status.textContent = "Shared login is not connected yet. Emergency recovery remains available.";
