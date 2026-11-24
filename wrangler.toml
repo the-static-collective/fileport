@@ -6,3 +6,13 @@ compatibility_flags = ["nodejs_compat"]
 # Runtime secrets are configured in Cloudflare, never committed:
 # DATABASE_URL, FILEPORT_ADMIN_TOKEN, NEON_S3_ACCESS_KEY_ID, NEON_S3_SECRET_ACCESS_KEY.
 # Optional future: FILEPORT_BUCKET R2 binding, FILEPORT_WRITE_PROVIDER = "r2".
+
+# Known, nonsecret configuration for the existing HUMKIN Supabase identity.
+# Do NOT override another project's Auth Site URL or rotate JWT keys merely for Fileport.
+[vars]
+STATIC_ID_ISSUER = "https://kbhqacsdvjsstzyplqij.supabase.co/auth/v1"
+STATIC_ID_APP_ORIGIN = "https://fileport.abundent.org"
+
+# STATIC_ID_CLIENT_ID, STATIC_ID_CLIENT_SECRET, STATIC_ID_OWNER_SUB and
+# STATIC_ID_COOKIE_KEY are intentionally not set until a real
+# Fileport OAuth app is registered and the existing HUMKIN login is verified.
