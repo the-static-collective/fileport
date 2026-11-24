@@ -1,6 +1,6 @@
 {
   "name": "static-fileport",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
-    "@aws-sdk/client-s3": "^3.900.0"
+    "@aws-sdk/client-s3": "^3.900.0",
+    "@the-static-collective/static-id": "git+https://github.com/the-static-collective/staticID.git#b46727114d043d383277530ac887bc8f092013e7"
   }
 }
