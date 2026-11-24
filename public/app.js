@@ -1,3 +1,4 @@
+import { createPreview } from "./media-preview.js";
 const $ = id => document.getElementById(id);
 const state = {
   key: sessionStorage.getItem("fileport-owner-key") || "",
@@ -280,7 +281,13 @@ async function upload(file) {
     $("file-input").value = "";
   }
 }
+let activePreview = null;
+function closePreview() {
+  if (activePreview) { const previous = activePreview; activePreview = null; previous.close(); }
+}
+window.addEventListener("pagehide",closePreview);
 async function showReceiver(token) {
+  closePreview();
   $("operator").hidden = true; $("receiver").hidden = false;
   const stateEl = $("receive-state"), list = $("receive-files");
   try {
@@ -304,12 +311,28 @@ async function showReceiver(token) {
         const button = node("button","button outline","Watch / listen");
         button.type = "button";
         button.addEventListener("click", () => {
-          let media = item.querySelector(".preview");
-          if (media) { media.remove(); button.textContent = "Watch / listen"; return; }
-          media = node(file.type.startsWith("video/") ? "video" : "audio","preview");
+          if (activePreview?.item === item) { closePreview(); return; }
+          closePreview();
+          const media = node(file.type.startsWith("video/") ? "video" : "audio","preview");
           media.controls = true; media.preload = "metadata"; media.playsInline = true;
-          media.src = "/api/share/file/" + encodeURIComponent(file.id);
-          item.append(media); button.textContent = "Close player";
+          const feedback = node("p","muted preview-status","Loading streaming preview…");
+          feedback.setAttribute("role","status");
+          const fallback = node("button","button quiet","Try compatibility playback");
+          fallback.type = "button";
+          const panel = node("div","preview-panel");
+          panel.append(media,feedback,fallback);
+          item.append(panel);
+          button.textContent = "Close player";
+          const controller = createPreview({
+            media,file,
+            onStatus: message => { feedback.textContent = message; },
+            onFallback: () => { fallback.disabled = true; fallback.hidden = true; }
+          });
+          fallback.addEventListener("click",()=>controller.compatibility());
+          activePreview = { item, close: () => {
+            controller.close(); panel.remove(); button.textContent = "Watch / listen";
+          }};
+          controller.start();
         });
         actions.append(button);
       }

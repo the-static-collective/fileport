@@ -70,3 +70,7 @@ Do **not** paste secrets into chat, PRs, screenshots, Github Actions variables, 
 **No new TOTP secret or new authentication database.** Identity comes from the existing HUMKIN Supabase Auth user. Neon remains the independently governed Fileport metadata and object-store backend. STATIC ID is a shared verification adapter, not implicit access to every app.
 
 **Current user-visible caveat:** session max one hour; lack of refresh may require another OAuth redirect. Do not claim long-lived seamless SSO until refresh and session revocation are built and verified.
+
+
+## Media preview compatibility
+The recipient page first uses native same-origin streaming. If native media errors, or the recipient chooses Try compatibility playback, a single full-file GET uses the existing invitation cookie, validates status/type/length, and builds an in-memory blob (maximum 25 MiB). It does not bypass invitations, modify files, use external URLs, or persist a copy. Close/switch/pagehide cancels pending work and revokes the blob; already delivered bytes cannot be retroactively recalled. Download stays available. Unsupported codecs still require a compatible browser or a transcoded copy. This is a targeted client-side fallback, not a claim that the cause of the desktop failure has been reproduced. Test the original invitation in the affected desktop browser, then check streaming, compatibility, seeking, closing and download.
