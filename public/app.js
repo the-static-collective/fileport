@@ -80,6 +80,9 @@ async function openWorkbench() {
   else sessionStorage.removeItem("fileport-owner-key");
   $("login-panel").hidden = true;
   $("desk").hidden = false;
+  $("wallet-panel").hidden = state.authMode !== "staticid";
+  $("wallet-keep-share").hidden = state.authMode !== "staticid";
+  if(state.authMode==="staticid") loadWallet().catch(e=>{$("wallet-status").textContent=e.message;});
   $("intro-hero").hidden = true;
   $("desk").scrollIntoView({block:"start"});
   try { await loadWorkspaces(); }
@@ -92,6 +95,7 @@ async function openWorkbench() {
   catch { $("desk-status").textContent = "Workspaces loaded. Activity history is temporarily unavailable."; }
 }
 function lockWorkbench() {
+  clearWallet();
   state.authMode = "";
   state.key = "";
   state.files = []; state.shares = []; state.workspaces = []; state.selected.clear();
@@ -321,7 +325,60 @@ async function showReceiver(token) {
     list.replaceChildren();
   }
 }
+let walletState=null,walletEdit=null,walletEpoch=0,walletBusy=false;
+function clearWallet(){
+ walletEpoch++;walletState=null;walletEdit=null;
+ $("wallet-form").reset();$("wallet-search").value="";$("wallet-archived").checked=false;
+ $("wallet-list").replaceChildren();$("wallet-status").textContent="";$("wallet-panel").hidden=true;
+ $("wallet-keep-share").hidden=true;$("wallet-save").textContent="Save link";
+}
+function resetWalletForm(){walletEdit=null;$("wallet-form").reset();$("wallet-save").textContent="Save link";}
+async function loadWallet(){
+ if(state.authMode!=="staticid")return;
+ const epoch=++walletEpoch;const r=await api("/api/wallet");
+ if(epoch!==walletEpoch||state.authMode!=="staticid")return;
+ walletState=r;renderWallet();
+}
+async function walletChange(data){
+ if(!walletState||state.authMode!=="staticid"||walletBusy)throw Error("Refresh wallet first");
+ const epoch=walletEpoch;walletBusy=true;
+ try{
+   const r=await api("/api/wallet",{method:"POST",data:{...data,revision:walletState.revision}});
+   if(epoch===walletEpoch&&state.authMode==="staticid"){walletState=r;renderWallet();return true;}
+   return false;
+ }catch(e){if(e.status===409&&epoch===walletEpoch){walletState=null;$("wallet-status").textContent=e.message;}throw e;}
+ finally{walletBusy=false;}
+}
+function renderWallet(){
+ const list=$("wallet-list");list.replaceChildren();
+ const query=$("wallet-search").value.toLowerCase().trim();
+ const rows=walletState.links.filter(x=>($("wallet-archived").checked||!x.archived)&&[x.title,x.collection,x.note,x.url].join(" ").toLowerCase().includes(query));
+ $("wallet-status").textContent=rows.length+" shown · "+walletState.links.length+" saved";
+ for(const x of rows){
+  const row=node("article","wallet-row"),info=node("div","file-info");
+  info.append(node("strong","",x.title),node("small","",[x.collection,x.archived?"Archived":"",new URL(x.url).hostname].filter(Boolean).join(" · ")));
+  if(x.note)info.append(node("p","muted",x.note));
+  const actions=node("div","wallet-actions");
+  const open=node("a","button small outline","Open");open.href=x.url;open.target="_blank";open.rel="noopener noreferrer";actions.append(open);
+  function btn(label,fn){const b=node("button","button small outline",label);b.type="button";b.onclick=async()=>{try{await fn();}catch(e){toast(e.message,true);}};actions.append(b);}
+  btn("Copy",async()=>{try{await navigator.clipboard.writeText(x.url);toast("Link copied.");}catch{window.prompt("Copy this link",x.url);}});
+  btn("Edit",()=>{walletEdit=x.id;$("wallet-title").value=x.title;$("wallet-url").value=x.url;$("wallet-collection").value=x.collection;$("wallet-note").value=x.note;$("wallet-save").textContent="Save changes";$("wallet-url").focus();});
+  btn(x.archived?"Restore":"Archive",()=>walletChange({action:x.archived?"restore":"archive",id:x.id}));
+  btn("Remove",async()=>{if(confirm("Remove this wallet entry? The destination is not revoked.")){if(await walletChange({action:"remove",id:x.id})&&walletEdit===x.id)resetWalletForm();}});
+  row.append(info,actions);list.append(row);
+ }
+}
 function bindEvents() {
+ $("wallet-refresh").onclick=()=>loadWallet().catch(e=>toast(e.message,true));
+ $("wallet-search").oninput=()=>{if(walletState)renderWallet();};
+ $("wallet-archived").onchange=()=>{if(walletState)renderWallet();};
+ $("wallet-cancel").onclick=resetWalletForm;
+ $("wallet-form").onsubmit=async e=>{e.preventDefault();const b=$("wallet-save");b.disabled=true;try{
+   const link={url:$("wallet-url").value.trim(),title:$("wallet-title").value,collection:$("wallet-collection").value,note:$("wallet-note").value};
+   if(await walletChange(walletEdit?{action:"edit",id:walletEdit,link}:{action:"add",link})){resetWalletForm();toast("Saved in your Link Wallet.");}
+ }catch(e){toast(e.message,true);}finally{b.disabled=false;}};
+ $("wallet-keep-share").onclick=()=>{if(state.authMode!=="staticid")return;resetWalletForm();$("wallet-url").value=$("share-url").value;$("wallet-title").value=$("share-title").value||"Fileport invitation";$("wallet-collection").value="Fileport";$("wallet-panel").scrollIntoView({block:"start"});$("wallet-title").focus();};
+
   $("login-form").addEventListener("submit", async event => {
     event.preventDefault();
     state.key = $("owner-key").value.trim();

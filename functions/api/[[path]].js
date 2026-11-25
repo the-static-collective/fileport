@@ -1,3 +1,4 @@
+import { wallet } from "../../lib/link-wallet.js";
 import { neon } from "@neondatabase/serverless";
 import {
   handleStaticIdRequest, requireStaticIdOwner
@@ -278,6 +279,11 @@ export async function onRequest({ request, env }) {
   // Without STATIC_ID_* settings these return 503 and legacy owner recovery stays functional.
   if (pathname.startsWith("/api/static-id/")) {
     return await handleStaticIdRequest(request, env);
+  }
+  if (pathname === "/api/wallet") {
+    if (!env.DATABASE_URL) return error("Wallet database not configured",503);
+    try { return await wallet(request,env,db(env),requireStaticIdOwner); }
+    catch { return error("Wallet temporarily unavailable",503); }
   }
   if (!configured(env)) return error("Fileport not configured", 503);
   try {

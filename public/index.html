@@ -75,6 +75,21 @@
         </div>
         <p id="desk-status" role="status" aria-live="polite" class="muted"></p>
         <button class="button quiet" id="retry-workspaces" type="button">Retry workspaces</button>
+        <section id="wallet-panel" class="card" hidden aria-labelledby="wallet-heading">
+          <div class="card-top"><span>LINK WALLET / SIA</span><span class="stamp">STATIC ID OWNER ONLY</span></div>
+          <div class="section-heading"><div><h3 id="wallet-heading">Keep the door.</h3><p class="muted">Your links, on every device. Private server storage, not an encrypted password vault. Saved invitations may expire.</p></div><button id="wallet-refresh" class="button quiet" type="button">Refresh</button></div>
+          <form id="wallet-form" class="form-stack">
+            <label for="wallet-url">HTTPS link</label><input id="wallet-url" type="url" required maxlength="4096" autocomplete="off" placeholder="https://…">
+            <label for="wallet-title">Title</label><input id="wallet-title" required maxlength="160" autocomplete="off" placeholder="Something worth keeping">
+            <label for="wallet-collection">Collection</label><input id="wallet-collection" maxlength="80" placeholder="Music, projects, people…">
+            <label for="wallet-note">Note (optional)</label><input id="wallet-note" maxlength="500">
+            <p class="muted">Saving stores the exact link, including any access token in its URL, in your private wallet. Do not save passwords or API keys.</p>
+            <div class="wallet-actions"><button class="button primary" id="wallet-save" type="submit">Save link</button><button class="button quiet" id="wallet-cancel" type="button">Clear</button></div>
+          </form>
+          <label for="wallet-search">Find a saved link</label><input id="wallet-search" type="search" placeholder="Search title, collection, note or URL">
+          <label><input id="wallet-archived" type="checkbox"> Include archived</label>
+          <p id="wallet-status" class="muted" role="status"></p><div id="wallet-list"></div>
+        </section>
         <div class="workspace-bar">
           <div class="workspace-field">
             <label for="workspace-picker">PROJECT / HOME</label>
@@ -121,7 +136,7 @@
             <div id="new-share" class="new-share" hidden>
               <p class="overline">YOUR LINK IS READY</p>
               <input id="share-url" readonly aria-label="Generated private invitation link">
-              <button id="copy-share" class="button outline block" type="button">Copy invitation link</button>
+              <button id="copy-share" class="button outline block" type="button">Copy invitation link</button><button id="wallet-keep-share" class="button outline block" type="button" hidden>Prepare to keep in Link Wallet</button>
               <small>Saved in this tab only. Use “Refresh link” in recent handoffs if you need a new one.</small>
             </div>
           </section>

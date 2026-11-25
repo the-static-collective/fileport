@@ -88,3 +88,6 @@ Fileport now supports one shared identity login with the HUMKIN Supabase user al
 `wrangler.toml` sets only the known nonsecret identity issuer and domain. After verifying HUMKIN OAuth consent and registering a **confidential** Fileport client with redirect URI `https://fileport.abundent.org/api/static-id/callback`, supply four additional Cloudflare **encrypted** settings: `STATIC_ID_CLIENT_ID`, `STATIC_ID_CLIENT_SECRET`, `STATIC_ID_OWNER_SUB` (the **verified existing** Supabase Auth user UUID), and `STATIC_ID_COOKIE_KEY` (independent 32-byte base64url AES key). Never reuse the Fileport admin token as the cookie key.
 
 Source and operational details: [STATIC ID FILEPORT-ADAPTER](https://github.com/the-static-collective/staticID/blob/main/docs/FILEPORT-ADAPTER.md). The OAuth server, consent and actual owner login must pass a live field test before treating SSO as ready. Static ID 001 currently issues **one-hour maximum** app sessions without background refresh; a longer-term session design is future work.
+
+## Link Wallet
+Private StaticID owner wallet, SIA-inspired stable pointers and cross-device storage. See [Link Wallet](docs/LINK-WALLET.md). Apply migration 003 before use.

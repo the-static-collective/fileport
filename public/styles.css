@@ -166,3 +166,5 @@ input:disabled,select:disabled { opacity: .65; }
 .recovery-access summary { cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
 .recovery-access .login-form { margin-top:10px; }
 .owner-entrances [hidden] { display:none !important; }
+
+#wallet-panel{margin:1rem 0}.wallet-row{padding:12px 0;border-top:1px solid var(--line,#ddd);display:flex;gap:12px;align-items:center;flex-wrap:wrap}.wallet-row .file-info{flex:1;min-width:140px;overflow-wrap:anywhere}.wallet-actions{display:flex;flex-wrap:wrap;gap:6px}#wallet-panel input:not([type=checkbox]){width:100%;box-sizing:border-box}#wallet-panel #wallet-search{margin:12px 0}
