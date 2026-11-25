@@ -168,3 +168,5 @@ input:disabled,select:disabled { opacity: .65; }
 .owner-entrances [hidden] { display:none !important; }
 
 #wallet-panel{margin:1rem 0}.wallet-row{padding:12px 0;border-top:1px solid var(--line,#ddd);display:flex;gap:12px;align-items:center;flex-wrap:wrap}.wallet-row .file-info{flex:1;min-width:140px;overflow-wrap:anywhere}.wallet-actions{display:flex;flex-wrap:wrap;gap:6px}#wallet-panel input:not([type=checkbox]){width:100%;box-sizing:border-box}#wallet-panel #wallet-search{margin:12px 0}
+
+.pocket-card{margin:16px 0}.pocket-card [hidden]{display:none!important}#capture-notice{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px}#capture-status{overflow-wrap:anywhere}

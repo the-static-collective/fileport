@@ -16,7 +16,7 @@ jobs:
       - run: npm run check
       - name: Bundle Pages Functions with Cloudflare Wrangler
         run: npx --yes wrangler@4 pages functions build functions --outdir .wrangler-check
-      - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers && test -f dist/_routes.json
+      - run: test -f dist/index.html && test -f dist/app.js && test -f dist/_headers && test -f dist/_routes.json && test -f dist/manifest.webmanifest && test -f dist/sw.js && test -f dist/icons/wallet-512.png
       - name: Verify private server modules are never in static output
         run: |
           test ! -e dist/lib

@@ -1,3 +1,4 @@
+import {validateDraft,DRAFT_TTL} from "./share-draft.js";
 const $ = id => document.getElementById(id);
 const state = {
   key: sessionStorage.getItem("fileport-owner-key") || "",
@@ -82,7 +83,7 @@ async function openWorkbench() {
   $("desk").hidden = false;
   $("wallet-panel").hidden = state.authMode !== "staticid";
   $("wallet-keep-share").hidden = state.authMode !== "staticid";
-  if(state.authMode==="staticid") loadWallet().catch(e=>{$("wallet-status").textContent=e.message;});
+  if(state.authMode==="staticid") loadWallet().then(applyCapture).catch(e=>{$("wallet-status").textContent=e.message;});
   $("intro-hero").hidden = true;
   $("desk").scrollIntoView({block:"start"});
   try { await loadWorkspaces(); }
@@ -363,7 +364,7 @@ function renderWallet(){
   const open=node("a","button small outline","Open");open.href=x.url;open.target="_blank";open.rel="noopener noreferrer";actions.append(open);
   function btn(label,fn){const b=node("button","button small outline",label);b.type="button";b.onclick=async()=>{try{await fn();}catch(e){toast(e.message,true);}};actions.append(b);}
   btn("Copy",async()=>{try{await navigator.clipboard.writeText(x.url);toast("Link copied.");}catch{window.prompt("Copy this link",x.url);}});
-  btn("Edit",()=>{walletEdit=x.id;$("wallet-title").value=x.title;$("wallet-url").value=x.url;$("wallet-collection").value=x.collection;$("wallet-note").value=x.note;$("wallet-save").textContent="Save changes";$("wallet-url").focus();});
+  btn("Edit",()=>{discardCapture();walletEdit=x.id;$("wallet-title").value=x.title;$("wallet-url").value=x.url;$("wallet-collection").value=x.collection;$("wallet-note").value=x.note;$("wallet-save").textContent="Save changes";$("wallet-url").focus();});
   btn(x.archived?"Restore":"Archive",()=>walletChange({action:x.archived?"restore":"archive",id:x.id}));
   btn("Remove",async()=>{if(confirm("Remove this wallet entry? The destination is not revoked.")){if(await walletChange({action:"remove",id:x.id})&&walletEdit===x.id)resetWalletForm();}});
   row.append(info,actions);list.append(row);
@@ -373,12 +374,12 @@ function bindEvents() {
  $("wallet-refresh").onclick=()=>loadWallet().catch(e=>toast(e.message,true));
  $("wallet-search").oninput=()=>{if(walletState)renderWallet();};
  $("wallet-archived").onchange=()=>{if(walletState)renderWallet();};
- $("wallet-cancel").onclick=resetWalletForm;
+ $("wallet-cancel").onclick=()=>{discardCapture();resetWalletForm();};
  $("wallet-form").onsubmit=async e=>{e.preventDefault();const b=$("wallet-save");b.disabled=true;try{
    const link={url:$("wallet-url").value.trim(),title:$("wallet-title").value,collection:$("wallet-collection").value,note:$("wallet-note").value};
-   if(await walletChange(walletEdit?{action:"edit",id:walletEdit,link}:{action:"add",link})){resetWalletForm();toast("Saved in your Link Wallet.");}
+   if(await walletChange(walletEdit?{action:"edit",id:walletEdit,link}:{action:"add",link})){discardCapture();resetWalletForm();toast("Saved in your Link Wallet.");}
  }catch(e){toast(e.message,true);}finally{b.disabled=false;}};
- $("wallet-keep-share").onclick=()=>{if(state.authMode!=="staticid")return;resetWalletForm();$("wallet-url").value=$("share-url").value;$("wallet-title").value=$("share-title").value||"Fileport invitation";$("wallet-collection").value="Fileport";$("wallet-panel").scrollIntoView({block:"start"});$("wallet-title").focus();};
+ $("wallet-keep-share").onclick=()=>{if(state.authMode!=="staticid")return;discardCapture();resetWalletForm();$("wallet-url").value=$("share-url").value;$("wallet-title").value=$("share-title").value||"Fileport invitation";$("wallet-collection").value="Fileport";$("wallet-panel").scrollIntoView({block:"start"});$("wallet-title").focus();};
 
   $("login-form").addEventListener("submit", async event => {
     event.preventDefault();
@@ -394,7 +395,7 @@ function bindEvents() {
       }
       catch { toast("Unable to contact shared sign-out; retry when online.",true); return; }
     }
-    lockWorkbench();
+    discardCapture();lockWorkbench();
   });
   $("retry-workspaces").addEventListener("click", async () => {
     try { await openWorkbench(); }
@@ -470,11 +471,52 @@ async function checkStaticId() {
     status.textContent = "Shared login is not connected yet. Emergency recovery remains available.";
   }
 }
+const captureKey="fileport-wallet-draft-v1";let capture=null,captureTimer=null,appliedCapture=false,installPrompt=null;
+function discardCapture(){
+ capture=null;appliedCapture=false;clearTimeout(captureTimer);
+ try{sessionStorage.removeItem(captureKey);}catch{}
+ $("capture-notice").hidden=true;
+}
+function captureNotice(message,canDiscard=true){$("capture-status").textContent=message;$("capture-notice").hidden=false;$("capture-discard").hidden=!canDiscard;}
+function receiveCapture(){
+ const hash=location.hash.slice(1);
+ if(hash.startsWith("wallet-draft=")||hash==="wallet-share-error"){
+  history.replaceState(null,"",location.pathname+location.search);
+  discardCapture();
+  if(hash==="wallet-share-error"){captureNotice("Could not read the shared link. Copy and paste one HTTPS link instead.",false);return;}
+  try{capture=validateDraft(JSON.parse(new URLSearchParams(hash).get("wallet-draft")));try{sessionStorage.setItem(captureKey,JSON.stringify(capture));}catch{}}
+  catch{captureNotice("Shared link is invalid or expired. Share again.",false);return;}
+ }else{
+  try{const saved=sessionStorage.getItem(captureKey);if(saved)capture=validateDraft(JSON.parse(saved));}
+  catch{discardCapture();}
+ }
+ if(capture){
+  captureNotice("Shared link received. Sign in with StaticID, review the draft and save it yourself.");
+  captureTimer=setTimeout(()=>{if(appliedCapture)resetWalletForm();discardCapture();captureNotice("Shared draft expired. Share again.",false);},Math.max(0,DRAFT_TTL-(Date.now()-capture.created)));
+ }
+}
+function applyCapture(){
+ if(!capture||appliedCapture||!walletState||state.authMode!=="staticid")return;
+ try{capture=validateDraft(capture);}catch{discardCapture();return;}
+ resetWalletForm();$("wallet-url").value=capture.url;$("wallet-title").value=capture.title;appliedCapture=true;
+ captureNotice("Review the shared URL and title below, then press Save link. Nothing has been saved yet.");
+ $("wallet-panel").scrollIntoView({block:"start"});$("wallet-title").focus();
+}
+function setupPocket(){
+ $("capture-discard").onclick=()=>{if(appliedCapture)resetWalletForm();discardCapture();};
+ $("install-wallet").onclick=async()=>{if(!installPrompt)return;const p=installPrompt;installPrompt=null;$("install-wallet").hidden=true;try{await p.prompt();await p.userChoice;}catch{toast("Use your browser menu to install.",true);}};
+ window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;$("install-wallet").hidden=false;});
+ window.addEventListener("appinstalled",()=>{$("install-wallet").hidden=true;$("install-help").textContent="Installed. Open Android Share and choose Link Wallet when available.";});
+ if(matchMedia("(display-mode: standalone)").matches)$("install-help").textContent="Installed app. Share links here from other apps on supported Android browsers.";
+ if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js",{type:"module",scope:"/"}).catch(()=>{$("install-help").textContent="App setup unavailable. Use the normal wallet and copy/paste links.";});
+}
 async function init() {
   bindEvents();
   checkHealth();
   const token = new URLSearchParams(location.hash.slice(1)).get("share");
   if (token) { await showReceiver(token); return; }
+  setupPocket();receiveCapture();
+  if(capture){state.key="";sessionStorage.removeItem("fileport-owner-key");}
   if (state.key) {
     try { await openWorkbench(); return; }
     catch { lockWorkbench(); }

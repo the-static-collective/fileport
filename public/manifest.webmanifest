@@ -1,0 +1,47 @@
+{
+  "id": "/",
+  "name": "Static Fileport · Link Wallet",
+  "short_name": "Link Wallet",
+  "description": "Your private link wallet and Fileport workbench.",
+  "start_url": "/#wallet",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7f8f0",
+  "theme_color": "#214535",
+  "icons": [
+    {
+      "src": "/icons/wallet-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/wallet-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/api/wallet-capture",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "shortcuts": [
+    {
+      "name": "Link Wallet",
+      "url": "/#wallet",
+      "icons": [
+        {
+          "src": "/icons/wallet-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
