@@ -334,9 +334,10 @@ function clearWallet(){
 }
 function resetWalletForm(){walletEdit=null;$("wallet-form").reset();$("wallet-save").textContent="Save link";}
 async function loadWallet(){
- if(state.authMode!=="staticid")return;
+ if(state.authMode!=="staticid"||walletBusy)return;
  const epoch=++walletEpoch;const r=await api("/api/wallet");
  if(epoch!==walletEpoch||state.authMode!=="staticid")return;
+ if(walletEdit&&(!walletState||walletState.revision!==r.revision)){resetWalletForm();toast("Wallet changed. Reopen the link before editing.");}
  walletState=r;renderWallet();
 }
 async function walletChange(data){
